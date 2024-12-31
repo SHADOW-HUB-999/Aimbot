@@ -1,8 +1,8 @@
 -- เปิด/ปิด Aimbot
-_G.Aimbot = true
+_G.Aimbot = false
 
--- ระยะเล็งเป้าหมาย
-local aimDistance = 50 -- ระยะในหน่วยเกม
+-- ระยะเล็งเป้าหมาย (ไม่จำกัด)
+local aimDistance = math.huge -- ไม่มีข้อจำกัดระยะ
 
 -- ฟังก์ชันค้นหาเป้าหมายที่ใกล้ที่สุดในระยะ
 function findClosestTarget()
@@ -20,7 +20,7 @@ function findClosestTarget()
             local targetHead = target.Character.Head
             local distance = (root.Position - targetHead.Position).Magnitude
 
-            -- ตรวจสอบเงื่อนไขว่าเป้าหมายอยู่ในระยะที่กำหนดและมีสุขภาพที่ดี
+            -- ตรวจสอบว่าเป้าหมายมีสุขภาพที่ดี
             if distance < closestDistance and target.Character:FindFirstChild("Humanoid").Health > 0 then
                 closestDistance = distance
                 closestTarget = targetHead
@@ -77,64 +77,105 @@ local function detectProximityOrHit()
     end)
 end
 
--- ฟังก์ชัน ESP
-local function createESP(target)
-    -- ตรวจสอบว่ามีเป้าหมายที่เป็นผู้เล่น
-    if target and target.Parent and target.Parent:FindFirstChild("Humanoid") then
-        local humanoid = target.Parent.Humanoid
-        local playerName = target.Parent.Name
-        local health = humanoid.Health
-        local maxHealth = humanoid.MaxHealth
-        local distance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - target.Position).Magnitude
+-- ฟังก์ชันตรวจจับการคลิกขวา
+local function onRightClick(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        _G.Aimbot = true  -- เปิด Aimbot เมื่อคลิกขวา
+        detectProximityOrHit() -- เรียกใช้ฟังก์ชันตรวจจับ
+    end
+end
 
-        -- สร้าง GUI
+-- ฟังก์ชันตรวจจับการปล่อยคลิกขวา
+local function onRightClickRelease(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        _G.Aimbot = false  -- ปิด Aimbot เมื่อปล่อยคลิกขวา
+    end
+end
+
+-- เชื่อมโยงการคลิกขวา
+game:GetService("UserInputService").InputBegan:Connect(onRightClick)
+game:GetService("UserInputService").InputEnded:Connect(onRightClickRelease)
+
+-- ฟังก์ชัน ESP Box
+local function createESPBox(target)
+    if target and target.Parent and target.Parent:FindFirstChild("Humanoid") then
+        local humanoidRootPart = target.Parent:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+
+        -- สร้าง BillboardGui
         local screenGui = Instance.new("BillboardGui")
         screenGui.Parent = game.CoreGui
-        screenGui.Adornee = target.Parent:FindFirstChild("Head")
-        screenGui.Size = UDim2.new(0, 120, 0, 60) -- ปรับขนาดของ GUI
-        screenGui.StudsOffset = Vector3.new(0, 3, 0)
-        screenGui.AlwaysOnTop = true
+        screenGui.Adornee = humanoidRootPart -- ให้กล่องติดตาม HumanoidRootPart
+        screenGui.Size = UDim2.new(0, 200, 0, 200) -- ขนาดเริ่มต้นของกล่อง
+        screenGui.StudsOffset = Vector3.new(0, 3, 0) -- ตำแหน่งที่ยกขึ้นจากหัว
+        screenGui.AlwaysOnTop = true -- ให้กล่องอยู่เหนือทุกอย่าง
 
-        -- สร้างกล่องข้อความสำหรับชื่อ
+        -- ตรวจสอบทีมของผู้เล่น
+        local player = game.Players.LocalPlayer
+        local teamColor = Color3.fromRGB(255, 0, 0)  -- ค่าเริ่มต้นสีแดงสำหรับศัตรู
+        if target.Parent:FindFirstChild("Team") and player.Team == target.Parent.Team then
+            teamColor = Color3.fromRGB(0, 255, 0)  -- สีเขียวสำหรับเพื่อน
+        end
+
+        -- สร้างกรอบ (Box) สำหรับ ESP
+        local box = Instance.new("Frame")
+        box.Parent = screenGui
+        box.Size = UDim2.new(1, 0, 1, 0) -- ขนาดของกรอบ
+        box.BackgroundColor3 = teamColor -- กำหนดสีตามทีม
+        box.BackgroundTransparency = 0.7 -- ความโปร่งใสของกรอบ (ควรโปร่งใส)
+
+        -- สร้างกรอบเพิ่มเติมสำหรับความละเอียดของ ESP
+        local outline = Instance.new("Frame")
+        outline.Parent = box
+        outline.Size = UDim2.new(1, 0, 1, 0)
+        outline.BorderSizePixel = 2 -- ขนาดขอบ
+        outline.BorderColor3 = Color3.fromRGB(255, 255, 255) -- สีขอบ (สีขาว)
+        outline.BackgroundTransparency = 1 -- ทำให้กรอบโปร่งใส
+
+        -- แสดงข้อมูลชื่อของผู้เล่น
         local playerNameLabel = Instance.new("TextLabel")
         playerNameLabel.Parent = screenGui
-        playerNameLabel.Text = playerName
-        playerNameLabel.Size = UDim2.new(1, 0, 0.3, 0)
+        playerNameLabel.Text = target.Parent.Name
+        playerNameLabel.Size = UDim2.new(1, 0, 0.1, 0) -- ขนาดของชื่อ
+        playerNameLabel.Position = UDim2.new(0, 0, -0.15, 0) -- ย้ายไปที่ด้านบนของกล่อง
         playerNameLabel.BackgroundTransparency = 1
-        playerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        playerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีของข้อความ (สีขาว)
         playerNameLabel.TextScaled = true
+        playerNameLabel.TextStrokeTransparency = 0.8 -- การปรับความมืดของข้อความ
 
-        -- สร้าง Health Bar
+        -- แสดง Health Bar
         local healthBarBackground = Instance.new("Frame")
         healthBarBackground.Parent = screenGui
-        healthBarBackground.Size = UDim2.new(0.9, 0, 0.2, 0) -- ปรับขนาดของ Health Bar
-        healthBarBackground.Position = UDim2.new(0.05, 0, 0.3, 0)
+        healthBarBackground.Size = UDim2.new(1, 0, 0.05, 0) -- ขนาดของพื้นหลัง Health Bar
+        healthBarBackground.Position = UDim2.new(0, 0, 1, 0)
         healthBarBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        healthBarBackground.BackgroundTransparency = 0.6
+        healthBarBackground.BackgroundTransparency = 0.5
 
         -- สร้าง Health Bar ที่แสดงตามสุขภาพ
+        local humanoid = target.Parent:FindFirstChild("Humanoid")
         local healthBar = Instance.new("Frame")
         healthBar.Parent = healthBarBackground
-        healthBar.Size = UDim2.new(health / maxHealth, 0, 1, 0) -- ขนาดจะเปลี่ยนตามสุขภาพ
+        healthBar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0) -- ขนาดจะเปลี่ยนตามสุขภาพ
         -- เปลี่ยนสี Health Bar
-        if health / maxHealth > 0.7 then
-            healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- สีเขียวเมื่อมีสุขภาพดี
-        elseif health / maxHealth > 0.3 then
-            healthBar.BackgroundColor3 = Color3.fromRGB(255, 255, 0)  -- สีเหลืองเมื่อสุขภาพลด
+        if humanoid.Health / humanoid.MaxHealth > 0.7 then
+            healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        elseif humanoid.Health / humanoid.MaxHealth > 0.3 then
+            healthBar.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
         else
-            healthBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- สีแดงเมื่อสุขภาพต่ำ
+            healthBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
         end
     end
 end
 
--- เรียกใช้ฟังก์ชัน ESP เมื่อเริ่ม
+-- เรียกใช้ฟังก์ชัน ESP Box เมื่อเริ่ม
 spawn(function()
     while true do
         for _, target in pairs(game.Players:GetPlayers()) do
             if target ~= game.Players.LocalPlayer then
                 local targetHead = target.Character and target.Character:FindFirstChild("Head")
                 if targetHead then
-                    createESP(targetHead)
+                    createESPBox(targetHead)
                 end
             end
         end
@@ -142,10 +183,3 @@ spawn(function()
     end
 end)
 
--- เรียกใช้ฟังก์ชันตรวจจับการโจมตีและเข้าใกล้เป้าหมาย
-detectProximityOrHit()
-
--- หยุด Aimbot
-function stopAimbot()
-    _G.Aimbot = false
-end
