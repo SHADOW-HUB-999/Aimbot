@@ -1,6 +1,7 @@
--- เปิดใช้งาน ESP และฟังก์ชันกันสตัน
+-- เปิด/ปิด ESP, Anti-Stun และ God Mode
 _G.ESPEnabled = true
 _G.AntiStun = true
+_G.GodMode = true
 
 -- ระยะการแสดงผล ESP
 local ESPDistance = 300
@@ -30,7 +31,7 @@ local function createESP(player)
 
     -- กรอบพื้นหลัง Health Bar
     healthBackground.Parent = billboard
-    healthBackground.Size = UDim2.new(0.5, 0.5, 0.1, 0)
+    healthBackground.Size = UDim2.new(1, 0, 0.2, 0)
     healthBackground.Position = UDim2.new(0, 0, 0.5, 0)
     healthBackground.BackgroundColor3 = Color3.new(0, 0, 0)
 
@@ -104,13 +105,39 @@ local function preventStun()
     end)
 end
 
--- เริ่ม ESP และ Anti-Stun
+-- ฟังก์ชัน God Mode
+local function enableGodMode()
+    spawn(function()
+        while _G.GodMode do
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            local humanoid = char and char:FindFirstChild("Humanoid")
+
+            if humanoid then
+                -- ตั้งค่าค่า Health ให้เป็น MaxHealth เสมอ
+                humanoid.Health = humanoid.MaxHealth
+                -- ป้องกันการลด Health
+                humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                    humanoid.Health = humanoid.MaxHealth
+                end)
+            end
+
+            wait(0.1)
+        end
+    end)
+end
+
+-- เริ่มระบบ ESP, Anti-Stun และ God Mode
 if _G.ESPEnabled then
     spawn(updateESP)
 end
 
 if _G.AntiStun then
     spawn(preventStun)
+end
+
+if _G.GodMode then
+    enableGodMode()
 end
 
 -- ฟังก์ชันปิด ESP
@@ -122,4 +149,9 @@ end
 -- ฟังก์ชันปิด Anti-Stun
 function stopAntiStun()
     _G.AntiStun = false
+end
+
+-- ฟังก์ชันปิด God Mode
+function stopGodMode()
+    _G.GodMode = false
 end
