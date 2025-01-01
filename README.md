@@ -104,52 +104,6 @@ local function preventStun()
         end
     end)
 end
--- ฟังก์ชัน God Mode แบบปรับปรุง
-local function enableGodMode()
-    spawn(function()
-        while _G.GodMode do
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            local humanoid = char and char:FindFirstChild("Humanoid")
-
-            if humanoid then
-                -- ล็อคค่า Health ให้เท่ากับ MaxHealth เสมอ
-                humanoid.Health = humanoid.MaxHealth
-                humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                    if humanoid.Health < humanoid.MaxHealth then
-                        humanoid.Health = humanoid.MaxHealth
-                    end
-                end)
-
-                -- ลบสคริปต์ที่อาจลด Health
-                for _, obj in pairs(char:GetChildren()) do
-                    if obj:IsA("Script") or obj:IsA("LocalScript") then
-                        if obj.Name:lower():find("damage") or obj.Name:lower():find("hurt") then
-                            obj:Destroy()
-                        end
-                    end
-                end
-
-                -- ตรวจจับ RemoteEvent ที่อาจลด Health
-                for _, remote in pairs(game.ReplicatedStorage:GetChildren()) do
-                    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                        remote.OnClientEvent:Connect(function(...)
-                            -- บล็อกข้อมูลที่อาจลด Health
-                            humanoid.Health = humanoid.MaxHealth
-                        end)
-                    end
-                end
-            end
-
-            wait(0.1)
-        end
-    end)
-end
-
--- เปิดใช้งาน God Mode
-if _G.GodMode then
-    enableGodMode()
-end
 
 -- เริ่มระบบ ESP, Anti-Stun และ God Mode
 if _G.ESPEnabled then
@@ -158,10 +112,6 @@ end
 
 if _G.AntiStun then
     spawn(preventStun)
-end
-
-if _G.GodMode then
-    enableGodMode()
 end
 
 -- ฟังก์ชันปิด ESP
@@ -173,9 +123,4 @@ end
 -- ฟังก์ชันปิด Anti-Stun
 function stopAntiStun()
     _G.AntiStun = false
-end
-
--- ฟังก์ชันปิด God Mode
-function stopGodMode()
-    _G.GodMode = false
 end
