@@ -1,3 +1,56 @@
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ฟังก์ชันหาเป้าหมายที่ใกล้ที่สุด
+local function findClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local otherHumanoidRootPart = otherPlayer.Character.HumanoidRootPart
+            local distance = (humanoidRootPart.Position - otherHumanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                closestPlayer = otherPlayer
+                shortestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer, shortestDistance
+end
+
+-- ฟังก์ชัน Ultra Instinct
+local function ultraInstinct()
+    local closestPlayer, distance = findClosestPlayer()
+
+    if closestPlayer and distance <= 3 then -- กำหนดระยะที่สามารถหลบได้ (20 หน่วย)
+        local targetRootPart = closestPlayer.Character.HumanoidRootPart
+        local behindPosition = targetRootPart.Position - (targetRootPart.CFrame.LookVector * 10)
+
+        -- Teleport ตัวละครไปด้านหลังเป้าหมาย
+        humanoidRootPart.CFrame = CFrame.new(behindPosition)
+
+        -- อนิเมชันหรือเอฟเฟกต์เสริม (ใส่ได้ตามต้องการ)
+        print("Ultra Instinct Activated!")
+    else
+        print("No player nearby to dodge.")
+    end
+end
+
+-- เรียกใช้ฟังก์ชันเมื่อถูกโจมตี (ตัวอย่างใช้ RunService ตรวจจับ)
+RunService.Stepped:Connect(function()
+    -- คุณสามารถแทนเงื่อนไขนี้ด้วยระบบการตรวจจับการโจมตีในเกม
+    local isUnderAttack = math.random() > 0.95 -- ตัวอย่างการจำลองการถูกโจมตี
+    if isUnderAttack then
+        ultraInstinct()
+    end
+end)
+
 -- เปิด/ปิด ESP, Anti-Stun และ God Mode
 _G.ESPEnabled = true
 _G.AntiStun = true
@@ -124,3 +177,52 @@ end
 function stopAntiStun()
     _G.AntiStun = false
 end
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ฟังก์ชันหาเป้าหมายที่ใกล้ที่สุดหรือกำลังโจมตีเรา
+local function findTarget()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local otherHumanoidRootPart = otherPlayer.Character.HumanoidRootPart
+            local distance = (humanoidRootPart.Position - otherHumanoidRootPart.Position).Magnitude
+
+            -- ตรวจสอบระยะทางและเงื่อนไขอื่น (เช่น การพยายามโจมตีเรา)
+            local isAttacking = false -- ต้องเชื่อมต่อกับระบบตรวจจับการโจมตีในเกม
+            if distance < shortestDistance and (distance <= 50 or isAttacking) then
+                closestPlayer = otherPlayer
+                shortestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- ฟังก์ชันเล็งเป้าหมาย
+local function aimAtTarget(target)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPosition = target.Character.HumanoidRootPart.Position
+        local aimDirection = (targetPosition - humanoidRootPart.Position).unit
+        humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + aimDirection)
+
+        -- เพิ่มความแม่นยำ เช่นการโจมตี
+        print("Aiming at:", target.Name)
+    else
+        print("No valid target found.")
+    end
+end
+
+-- เรียกใช้ฟังก์ชัน Aim Bot
+RunService.RenderStepped:Connect(function()
+    local target = findTarget()
+    aimAtTarget(target)
+end)
